@@ -2,7 +2,9 @@
 title: "assigment 2"
 author: "authors"
 date: "`r Sys.Date()`"
-output: pdf_document
+output:
+  pdf_document: default
+  word_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -60,8 +62,6 @@ print(paste0("The test MSE is: ", mse_test))
 
 
 # Finding the most significant variables
-# Visualize the ones with the biggest values in t and visualize it(Damian's task)
-#is a univariate real-valued function, i.e., f : R 
 summary(fit)
 ```
 
@@ -69,7 +69,7 @@ summary(fit)
 
 **Q3**:Implement 4 following functions by using basic R commands only (no external packages):
 
-**Q3a**: LogLikehood function that for a given parameter vector THETA and dispersion $sigma$ computes the log-likelihood function  for the stated model and the training data.
+**Q3a**: LogLikehood function that for a given parameter vector $\theta$ and dispersion $\sigma$ computes the log-likelihood function  for the stated model and the training data.
 
 **A**:
 ```{r}
@@ -86,7 +86,7 @@ loglikelihood <- function(params, data){
 ```
 
 
-**Q3b**: Ridge function that for given vector $theta$, scalar $sigma$ and scalar $lambda$ uses function from 3a and adds up a Ridge penalty 2 to the minus loglikelihood.
+**Q3b**: Ridge function that for given vector $\theta$, scalar $\sigma$ and scalar $\lambda$ uses function from 3a and adds up a Ridge penalty $\lambda||\theta||^{2}$ to the minus loglikelihood.
 
 **A**:
 
@@ -98,17 +98,19 @@ ridge <- function(params, data, lambda){
 }
 ```
 
-**Q3c**: RidgeOpt function that depends on scalar $lamda$, uses function from 3b and function optim() with method=”BFGS” to find the optimal $theta$ and $sigma$ for the given $lamda$.
+**Q3c**: RidgeOpt function that depends on scalar $\lambda$, uses function from 3b and function optim() with method=”BFGS” to find the optimal $\theta$ and $\sigma$ for the given $\lambda$.
 
 **A**:
 ```{r}
 ridgeOpt <- function(lambda, data){
-  opt <- optim(fit$coefficients, fn=ridge, data=data, lambda=lambda, method="BFGS")
+  # We initialize every value at 1. We take the number of columns of data as we know that we don't need intercept but we need sigma parameter
+  # so it's number of parameters - 1(for intercept) + 1(for sigma) = number of parameters
+  opt <- optim(rep(1, ncol(data) ), fn=ridge, data=data, lambda=lambda, method="BFGS")
   return(opt)
 }
 ```
 
-**Q3d**: DF function that for a given scalar $lambda$ computes the degrees of freedom of the Ridge model based on the training data.
+**Q3d**: DF function that for a given scalar $\lambda$ computes the degrees of freedom of the Ridge model based on the training data.
 
 **A**:
 ```{r}
@@ -120,7 +122,79 @@ df <- function(lambda, x){
 }
 ```
 
+**Q4**: By using function RidgeOpt, compute optimal $\theta$ parameters for $\lambda$ = 1,  $\lambda$ = 100 and $\lambda$ = 1000. Use the estimated parameters to predict the motor_UPDRS values for training and test data and report the training and test MSE values. Which penalty parameter is most appropriate among the selected ones? Compute and compare the degrees of freedom of these models and make appropriate conclusions.
+
+**A**:
+```{r}
+trainS_hat = trainS["motor_UPDRS"]
+#trainS = subset(trainS, select = -c(motor_UPDRS))
+
+testS_hat = testS["motor_UPDRS"]
+#testS = subset(testS, select = -c(motor_UPDRS))
 
 
+model1 = ridgeOpt(1, trainS)
+model2 = ridgeOpt(100, trainS)
+model3 = ridgeOpt(1000, trainS)
+
+
+opt_predict <- function(x, model){
+  out <- sum((x) * model$par)
+  return(out)
+}
+
+train_output1 <- c()
+train_output2 <- c()
+train_output3 <- c()
+
+for(i in 1:nrow(trainS)){
+  
+  train_output1[i] <- opt_predict(trainS[i, ], model1)
+  train_output2[i] <- opt_predict(trainS[i, ], model2)
+  train_output3[i] <- opt_predict(trainS[i, ], model3)
+}
+
+test_output1 <- c()
+test_output2 <- c()
+test_output3 <- c()
+
+for(i in 1:nrow(testS)){
+  test_output1[i] <- opt_predict(testS[i, ], model1)
+  test_output2[i] <- opt_predict(testS[i, ], model2)
+  test_output3[i] <- opt_predict(testS[i, ], model3)
+}
+
+ms_train1 <- (1/nrow(trainS_hat)) * (sum(train_output1 - trainS_hat)) ^ 2
+ms_train2 <- (1/nrow(trainS_hat)) * (sum(train_output2 - trainS_hat)) ^ 2
+ms_train3 <- (1/nrow(trainS_hat)) * (sum(train_output3 - trainS_hat)) ^ 2
+
+
+ms_test1 <- (1/nrow(testS_hat)) * (sum(test_output1 - testS_hat))^ 2
+ms_test2 <- (1/nrow(testS_hat)) * (sum(test_output2 - testS_hat)) ^ 2
+ms_test3 <- (1/nrow(testS_hat)) * (sum(test_output3 - testS_hat)) ^ 2
+
+```
+
+```{r}
+ms_train1
+ms_train2
+ms_train3
+
+ms_test1
+ms_test2
+ms_test3
+```
+
+We can see that for the training data, the error is almost the same for all 3 cases. On the other hand, in the test data we can see that for $\lambda$ = 1 the error is quite big. for $\lambda$ = 100 and $\lambda$ = 1000 the error is much smaller compared for $\lambda$ = 1, and they are almost the same but for $\lambda$ = 100 we have the smallest error. 
+```{r}
+df(1, trainS)
+df(100, trainS)
+df(1000, trainS)
+
+df(1, testS)
+df(100, testS)
+df(1000, testS)
+```
+We can see that as $\lambda$ increases the degrees of freedom are getting reduced. That's reasonable as $\lambda$ gets bigger as more values will be 0, so we will have less features in our model.
 
 
