@@ -1,0 +1,126 @@
+---
+title: "assigment 2"
+author: "authors"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Assignment 2. Linear regression and ridge regression
+
+**Q1**: Divide it into training and test data (60/40) and scale it appropriately. In the
+coming steps, assume that motor_UPDRS is normally distributed and is a
+function of the voice characteristics, and since the data are scaled, no
+intercept is needed in the modelling.
+
+```{r}
+library(caret)
+data = read.csv("parkinsons.csv")
+data = subset(data, select = -c(age, sex, test_time, subject., total_UPDRS))
+
+set.seed(12345)
+
+n = nrow(data)
+
+id = sample(1:n, floor(n*0.6))
+train_data = data[id,]
+test_data = data[-id,]
+
+scaler = preProcess(train_data)
+trainS = predict(scaler, train_data)
+testS = predict(scaler, test_data)
+```
+
+**A**: We split the data into 60% for training and 40% for testing. As it's mentioned motor_UPDRS is a function only of the voice characteristics so we remove the information for age, sex, test_time, subject. and total_UPDRS. We use preProcess function from caret package as it's shown in the slides to scale our data.
+
+**Q2**: Compute a linear regression model from the training data, estimate training and test MSE and comment on which variables contribute significantly to the model.
+
+```{r}
+# For intercept = 0
+fit = lm(motor_UPDRS ~ 0 + ., data = trainS)
+
+# Calculating the MSE on training
+#model_summ <-summary(fit)
+#mse_training = mean(model_summ$residuals^2) # That's a second way
+results = predict(fit, trainS)
+n = length(results)
+mse_training = (1/n) * sum((results - trainS$motor_UPDRS)^2)
+
+print(paste0("The training MSE is: ", mse_training))
+
+# Calculating the MSE on test
+results = predict(fit, testS)
+n = length(results)
+mse_test = (1/n) * sum((results - testS$motor_UPDRS)^2)
+
+print(paste0("The test MSE is: ", mse_test))
+
+
+# Finding the most significant variables
+# Visualize the ones with the biggest values in t and visualize it(Damian's task)
+#is a univariate real-valued function, i.e., f : R 
+summary(fit)
+```
+
+**A**: From the output we can see that the training MSE and test MSE are 0.878543102826276 and  0.935447712156725, respectively. Setting significance level at 0.001 we can see that the most significant variables are Jitter.Abs, Shimmer.APQ5, Shimmer.APQ11, NHR, HNR, DFA and PPE
+
+**Q3**:Implement 4 following functions by using basic R commands only (no external packages):
+
+**Q3a**: LogLikehood function that for a given parameter vector THETA and dispersion $sigma$ computes the log-likelihood function  for the stated model and the training data.
+
+**A**:
+```{r}
+loglikelihood <- function(params, data){
+  weights <- params[2:ncol(data)]
+  sigma <- params[1]
+  x <- data[, 2:ncol(data)]
+  y <- data[,1]
+  n <- nrow(x)
+  loglikelihood <- -n / 2 * log(2 * pi * sigma ^ 2) - 1 / (2 * sigma ^ 2) *
+  sum((y - as.matrix(x) %*% as.numeric(weights)) ^ 2) 
+  return(loglikelihood)
+}
+```
+
+
+**Q3b**: Ridge function that for given vector $theta$, scalar $sigma$ and scalar $lambda$ uses function from 3a and adds up a Ridge penalty 2 to the minus loglikelihood.
+
+**A**:
+
+```{r}
+ridge <- function(params, data, lambda){
+  w <- params[2:length(params)]
+  loglikelihood <- -loglikelihood(params, data) + lambda*sum(w^2)
+  return(loglikelihood)
+}
+```
+
+**Q3c**: RidgeOpt function that depends on scalar $lamda$, uses function from 3b and function optim() with method=”BFGS” to find the optimal $theta$ and $sigma$ for the given $lamda$.
+
+**A**:
+```{r}
+ridgeOpt <- function(lambda, data){
+  opt <- optim(fit$coefficients, fn=ridge, data=data, lambda=lambda, method="BFGS")
+  return(opt)
+}
+```
+
+**Q3d**: DF function that for a given scalar $lambda$ computes the degrees of freedom of the Ridge model based on the training data.
+
+**A**:
+```{r}
+df <- function(lambda, x){
+  x<- as.matrix(x)
+  out <- x %*% solve((t(x) %*% x) + diag(lambda, ncol(x))) %*% t(x)
+  out <- sum(diag(out))
+  return(out)
+}
+```
+
+
+
+
+
