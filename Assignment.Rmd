@@ -1,0 +1,166 @@
+---
+title: "Assignment"
+author: "Damian Ke"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# 3.1 
+```{r}
+library(ggplot2)
+library(plotly)
+diabetes = read.csv("pima-indians-diabetes.csv")
+p <- ggplot(diabetes, aes(x=X50,y=X148,color=as.factor(X1)))+
+  geom_point() +
+  labs(color = "Diabetes")+
+  xlab("Age")+
+  ylab("Plasma glucose concentration")+
+  ggtitle("Plasma glucose concentration on Age")
+ggplotly(p)
+```
+
+**Q:** Do you think that Diabetes is easy
+to classify by a standard logistic regression model that uses these two variables as
+features? Motivate your answer.
+
+**A:** It can be difficult to classify diabetes, by a standard linear regression.
+There are some overlapping and for these parameters it can be hard to split with a linear boundary decision.
+Therefore other variables may be required to find a clear pattern. Although "Plasma glucose concentration"
+seem to have a cluster for high values.
+
+
+
+# 3.2
+```{r}
+m1=glm(X1~X148+X50, data=diabetes, family = "binomial")
+summary(m1)$coef
+#PROBALISTIC EQUATION CAN BE FOUND IN EXERCISE 9 AT THE END.
+#(1/(1+exp(m1$coefficients[1]+m1$coefficients[2]*X148+m1$coefficients[3]*X50)))
+
+
+missclass=function(X){
+  n=length(X)
+  a = 1 - sum(diag(X))
+  return(a / n)
+}
+
+Prob=predict(m1, type="response")
+Pred=ifelse(Prob>0.5, "Yes", "No")
+confusion_matrix_train = table(diabetes$X1, Pred)
+missclass(confusion_matrix_train)
+diabetes["Predicted"] = Pred
+
+p <- ggplot(diabetes, aes(x=X50,y=X148,color=Predicted))+
+  geom_point() +
+  labs(color = "Predicted diabetes")+
+  xlab("Age")+
+  ylab("Plasma glucose concentration")+
+  ggtitle("Plasma glucose concentration on Age")
+
+ggplotly(p)
+
+```
+
+**Q:**Report the probabilistic equation of the estimated model (i.e., how the target depends on the features and the
+estimated model parameters probabilistically). Compute also the training
+misclassification error and make a scatter plot of the same kind as in step 1 but
+showing the predicted values of Diabetes as a color instead. Comment on the
+quality of the classification by using these results.
+
+**A:** 
+Probabilistic model =  $\frac{1}{1+exp^{-(-5.89785793) + 0.03558250*V2 + 0.02450157*V8}}$
+Misclassification is equal to  26.3%.
+The standard logistic regression struggled to correctly predict the values, although it found a balance
+of splitting the non-diabetes cluster at age 20 with 40 to 130 of plasma glucose concentration with the rest of diabetes observations.
+
+
+# 3.3
+
+```{r}
+m1_slope <- m1$coefficients[3]/(-m1$coefficients[2])
+m1_intercept <- m1$coefficients[1]/(-m1$coefficients[2]) 
+
+p_3 <- ggplot(diabetes, aes(x=V8,y=V2,color=Predicted))+
+  geom_point() +
+  geom_abline(intercept = m1_intercept, slope = m1_slope)+
+  labs(color = "Predicted diabetes")+
+  xlab("Age")+
+  ylab("Plasma glucose concentration")+
+  ggtitle("Plasma glucose concentration on Age")
+ggplotly(p_3)
+
+```
+
+
+**Q:** Comment whether the decision boundary seems to catch the
+data distribution well
+
+**A:** 
+
+# 3.4 
+```{r}
+Pred_0.2=ifelse(Prob>0.2, "Yes", "No")
+diabetes["Predicted_0.2"] = Pred_0.2
+
+p_0.2 <- ggplot(diabetes, aes(x=V8,y=V2,color=Predicted_0.2))+
+  geom_point() +
+  labs(color = "Predicted diabetes")+
+  xlab("Age")+
+  ylab("Plasma glucose concentration")+
+  ggtitle("Plasma glucose concentration on Age (r=0.2)")
+p_0.2
+
+Pred_0.8=ifelse(Prob>0.8, "Yes", "No")
+diabetes["Predicted_0.8"] = Pred_0.8
+
+p_0.8 <- ggplot(diabetes, aes(x=V8,y=V2,color=Predicted_0.8))+
+  geom_point() +
+  labs(color = "Predicted diabetes")+
+  xlab("Age")+
+  ylab("Plasma glucose concentration")+
+  ggtitle("Plasma glucose concentration on Age (r=0.8)")
+
+p_0.8
+
+
+```
+
+**Q:** Comment on what happens with the prediction when r value
+changes.
+
+**A:** When r value decreases, the algorithm predicts increased number of observations with diabetes and the oppositve could be found when r value increases. 
+
+
+# 3.5
+
+```{r}
+diabetes["Z1"] = diabetes$V2^4
+diabetes["Z2"] = (diabetes$V2^3)*(diabetes$V8)
+diabetes["Z3"] = (diabetes$V2^2)*(diabetes$V8^2)
+diabetes["Z4"] = (diabetes$V2)*(diabetes$V8^3)
+diabetes["Z5"] = diabetes$V8^4
+m2=glm(V9~V2+V8+Z1+Z2+Z3+Z4+Z5, data=diabetes, family = "binomial")
+
+Prob2=predict(m2, type="response")
+Pred2=ifelse(Prob2>0.5, "Yes", "No")
+confusion_matrix_train2 = table(diabetes$V9, Pred2)
+missclass(confusion_matrix_train2)
+diabetes["Predicted2"] = Pred2
+
+p <- ggplot(diabetes, aes(x=V8,y=V2,color=Predicted2))+
+  geom_point() +
+  labs(color = "Predicted diabetes")+
+  xlab("Age")+
+  ylab("Plasma glucose concentration")+
+  ggtitle("Plasma glucose concentration on Age")
+
+ggplotly(p)
+
+```
+
+
+**Q:** What can you say about the quality of this model compared to the previous logistic
+regression model? How have the basis expansion trick affected the shape of
+the decision boundary and the prediction accuracy?
+
+**A:** 
