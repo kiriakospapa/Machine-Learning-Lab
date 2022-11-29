@@ -1,0 +1,186 @@
+---
+title: "Exercise 2"
+author: "Damian Ke & Kyriakos Papadopoulos"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(caret)
+library(glmnet)
+```
+## Assignment 1. Explicit regularization
+
+**Question 1**: Assume that Fat can be modeled as a linear regression in which
+absorbance characteristics (Channels) are used as features. Report the underlying
+probabilistic model, fit the linear regression to the training data and estimate
+the training and test errors. Comment on the quality of fit and prediction and
+therefore on the quality of model.
+
+
+**Answer 1:**
+```{r, echo=FALSE}
+# Splitting the data
+data = read.csv("tecator.csv")
+
+# Removing the sample column
+data = data[-1]
+# scaler = preProcess(data)
+# data = predict(scaler, data)
+set.seed(12345)
+n = nrow(data)
+id = sample(1:n, floor(n*0.5))
+train = data[id,]
+test = data[-id,]
+
+fit = lm(Fat ~ . - Protein - Moisture , data = train)
+
+results_training = predict(fit, train)
+mse_training =  mean((results_training - train$Fat) ^ 2)
+
+results_test = predict(fit, test)
+mse_test = mean((results_test - test$Fat) ^ 2)
+```
+
+We chose to use **MSE** as our error function because we have a regression problem.
+
+```{r, echo = FALSE}
+cat("The mse for training data is: ", mse_training, "\n")
+cat("The mse for test data is: ", mse_test)
+```
+
+We can clearly see that there is a big difference between training and test errors.
+The training error is much smaller compared to the test error. That shows that
+our model is very complicated and it overfits.That shows that our model is very complicated.
+
+The probabilistic model for linear regression is given by the formula:
+$$y|x~N(\theta^{T}x, \sigma^{2})$$
+
+ which is equal if we write it like as equation:
+ 
+ $$y = \theta_0 + \theta+1 x_1 + ... \theta_px_p + \epsilon$$
+
+The $\epsilon$ represents the noise term and accounts for random errors in the data
+not captured by the model. The noise is assumed to have mean zero and to be independent 
+of x. The zero-mean assumption
+is nonrestrictive, since any (constant) non-zero mean can be incorporated in the
+offset term $\theta_0$
+
+**Question 2: ** Assume now that Fat can be modeled as a LASSO regression in which all
+Channels are used as features. Report the cost function that should be
+optimized in this scenario.
+
+**Answer 2: ** The cost function that we are gonna use for LASSO regression according
+to the slides:
+
+$$\frac{1}{n} \sum_{i = 1}^{n} (y_i - \theta0 - \theta_1 x_1j - ... - \theta_p x_pj) ^ 2 + \lambda \sum_{j=1}^{p} |\theta_i|$$
+
+Where $p = 100$ in our case.
+
+**Question 3: ** Fit the LASSO regression model to the training data. Present a 
+plot illustrating how the regression coefficients depend on the log of penalty
+factor (log $\lambda$) and interpret this plot. What value of the penalty factor 
+can be chosen if we want to select a model with only three features?
+
+**Answer 3: **
+
+```{r, echo=FALSE, fig.align='center'}
+covariates = train[, !names(train) %in% c("Fat", "Protein", "Moisture")]
+response = train[, names(train) %in% c("Fat")]
+
+modell = glmnet(as.matrix(covariates), response, alpha = 1, family="gaussian")
+plot(modell, xvar="lambda", label=TRUE)
+
+# values_of_lambda = c()
+# for(i in 1:length(modell$df)){
+#   if(modell$df[i] == 3){
+#     values_of_lambda <- append(values_of_lambda, modell$lambda[i])
+#   }
+# }
+# 
+# # The values of lambda that we have df =  3
+# from = min(values_of_lambda)
+# to = max(values_of_lambda)
+```
+The values of the penalty factor that we can choose are shown in the plot in the 
+interval(a very small interval) that only 3 lines are different to 0. We can see 
+that there is not only 1 value but many values in this interval. We can say that
+approximately is around log($\lambda$) = -0.3
+
+**Question 4: ** Repeat step 3 but fit Ridge instead of the LASSO regression and 
+compare the plots from steps 3 and 4. Conclusions?
+
+**Answer 4: **
+```{r, echo=FALSE, fig.align='center'}
+modelr = glmnet(as.matrix(covariates), response, alpha = 0, family="gaussian")
+plot(modelr, xvar="lambda", label=TRUE)
+```
+
+We can see that for the same value of lambda LASSO gets rid of much more coefficients
+compared to Ridge. That's because LASSO takes the magnitude of the coefficients
+and ridge takes the square.
+
+**Question 5: **Use cross-validation with default number of folds to compute the optimal
+LASSO model. Present a plot showing the dependence of the CV score on log $\lambda$
+and comment how the CV score changes with log $\lambda$. Report the optimal $\lambda$ and how many variables were chosen in this model. Does the information
+displayed in the plot suggests that the optimal $\lambda$ value results in a statistically
+significantly better prediction than log $\lambda$ = -4? Finally, create a scatter plot of the original test versus predicted test values for the model corresponding
+to optimal lambda and comment whether the model predictions are good
+
+**Answer 5:**
+
+```{r, echo=FALSE, fig.align='center'}
+modelcv=cv.glmnet(as.matrix(covariates), response, alpha=1, family="gaussian")
+optimal_lambda = modelcv$lambda.min
+plot(modelcv)
+#coef(modelcv, s="lambda.min")
+cv_scores = modelcv$cvm
+lambdas = modelcv$lambda
+optimal_lambda = modelcv$lambda.min
+
+```
+
+```{r, include=FALSE, fig.align='center'}
+optimal_model = glmnet(as.matrix(covariates), response, alpha = 1, family="gaussian",
+                lambda = optimal_lambda)
+
+pred = predict(optimal_model, as.matrix(test[, 1:100]))
+optimal_mse = (mean(pred - test$Fat)^2)
+
+df = data.frame(pred, test$Fat)
+
+p <- ggplot(data = df, aes(x=test.Fat, y=pred, color = "Predictions")) + 
+  geom_point() + geom_line(data = df, aes(x=test.Fat, y = test.Fat, color = "Perfect Regression Line")) + labs(x = "Real Values", y = "Predictions", color = "Legend")
+
+# Question: How we are sure for the number of features? from optimal_model$beta
+# or from the diagramm?
+```
+# Question here
+We can see that the error is stable until the optimal lambda(in that point it gets it's minimum value). After the optimal lambda the error starts to be increased. The cv score is the opposite of the error so the cv score in the begining it's high and after the optimal lambda(where is the maximum) it drops down/
+
+The optimal value of lambda 0.004508949. According to the plot for $lambda = 0.004508949$. We can see that the confidence intervals are equal so for the optimal $\lambda$ it's not 
+significantly better in predictions compared to $\lambda = log(-4)$. 
+
+```{r, echo=FALSE}
+optimal_model$beta
+```
+We can that the model with the optimal $\lambda$ uses in total 7 features. These are:
+
+- Channel13
+- Channel14
+- Channel15
+- Channel16
+- Channel40
+- Channel41
+- Channel52
+
+```{r, echo=FALSE, fig.align='center'}
+p
+```
+The red line represents a perfect model and the blue dots are our predictions. We
+can see that our model is not perfect but it's predictions are close to the real
+values. 

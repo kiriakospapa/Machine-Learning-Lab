@@ -272,6 +272,8 @@ intercept is needed in the modelling.
 data = read.csv("parkinsons.csv")
 data = subset(data, select = -c(age, sex, test_time, subject., total_UPDRS))
 set.seed(12345)
+scaler = preProcess(data)
+data = predict(scaler, data)
 
 n = nrow(data)
 
@@ -398,6 +400,8 @@ opt_predict <- function(x, model){
   return(out)
 }
 
+
+
 train_output1 <- c()
 train_output2 <- c()
 train_output3 <- c()
@@ -423,14 +427,14 @@ for(i in 1:nrow(testS)){
   test_output3[i] <- opt_predict(testS[i, ], model3)
 }
 
-ms_train1 <- (1/nrow(trainS_hat)) * (sum(train_output1 - trainS_hat)) ^ 2
-ms_train2 <- (1/nrow(trainS_hat)) * (sum(train_output2 - trainS_hat)) ^ 2
-ms_train3 <- (1/nrow(trainS_hat)) * (sum(train_output3 - trainS_hat)) ^ 2
+ms_train1 <-  mean((train_output1 - trainS_hat$motor_UPDRS) ^ 2)
+ms_train2 <-  mean((train_output2 - trainS_hat$motor_UPDRS) ^ 2)
+ms_train3 <-  mean((train_output3 - trainS_hat$motor_UPDRS) ^ 2)
 
 
-ms_test1 <- (1/nrow(testS_hat)) * (sum(test_output1 - testS_hat))^ 2
-ms_test2 <- (1/nrow(testS_hat)) * (sum(test_output2 - testS_hat)) ^ 2
-ms_test3 <- (1/nrow(testS_hat)) * (sum(test_output3 - testS_hat)) ^ 2
+ms_test1 <- mean((test_output1 - testS_hat$motor_UPDRS) ^ 2)
+ms_test2 <- mean((test_output2 - testS_hat$motor_UPDRS) ^ 2)
+ms_test3 <- mean((test_output3 - testS_hat$motor_UPDRS) ^ 2)
 
 ```
 
