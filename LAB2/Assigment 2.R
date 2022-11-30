@@ -85,6 +85,7 @@ plot(modelr, xvar="lambda", label=TRUE)
 
 # We can say that lasso gets rid of more features than ridge.
 
+## 5.
 modelcv=cv.glmnet(as.matrix(covariates), response, alpha=1, family="gaussian")
 optimal_lambda = modelcv$lambda.min
 plot(modelcv)
