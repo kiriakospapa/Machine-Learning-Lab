@@ -55,7 +55,7 @@ cat("The mse for test data is: ", mse_test)
 
 We can clearly see that there is a big difference between training and test errors.
 The training error is much smaller compared to the test error. That shows that
-our model is very complicated and it overfits.That shows that our model is very complicated.
+our model is very complicated and it overfits.
 
 The probabilistic model for linear regression is given by the formula:
 $$y|x~N(\theta^{T}x, \sigma^{2})$$
@@ -105,11 +105,14 @@ plot(modell, xvar="lambda", label=TRUE)
 # # The values of lambda that we have df =  3
 # from = min(values_of_lambda)
 # to = max(values_of_lambda)
+
 ```
-The values of the penalty factor that we can choose are shown in the plot in the 
-interval(a very small interval) that only 3 lines are different to 0. We can see 
-that there is not only 1 value but many values in this interval. We can say that
-approximately is around log($\lambda$) = -0.3
+
+```{r, echo=FALSE}
+lambdas = which(modell$df == 3)
+cat("The values of lambda that we get 3 features are: ", modell$lambda[lambdas])
+```
+We can also do it visually by going to the above plot and find the value of lambda that only 3 lines are != 0. 
 
 **Question 4: ** Repeat step 3 but fit Ridge instead of the LASSO regression and 
 compare the plots from steps 3 and 4. Conclusions?
@@ -137,7 +140,6 @@ to optimal lambda and comment whether the model predictions are good
 modelcv=cv.glmnet(as.matrix(covariates), response, alpha=1, family="gaussian")
 optimal_lambda = modelcv$lambda.min
 plot(modelcv)
-#coef(modelcv, s="lambda.min")
 cv_scores = modelcv$cvm
 lambdas = modelcv$lambda
 optimal_lambda = modelcv$lambda.min
@@ -145,10 +147,7 @@ optimal_lambda = modelcv$lambda.min
 ```
 
 ```{r, include=FALSE, fig.align='center'}
-optimal_model = glmnet(as.matrix(covariates), response, alpha = 1, family="gaussian",
-                lambda = optimal_lambda)
-
-pred = predict(optimal_model, as.matrix(test[, 1:100]))
+pred = predict(modelcv, as.matrix(test[, 1:100]))
 optimal_mse = (mean(pred - test$Fat)^2)
 
 df = data.frame(pred, test$Fat)
@@ -159,27 +158,23 @@ p <- ggplot(data = df, aes(x=test.Fat, y=pred, color = "Predictions")) +
 # Question: How we are sure for the number of features? from optimal_model$beta
 # or from the diagramm?
 ```
-# Question here
-We can see that the error is stable until the optimal lambda(in that point it gets it's minimum value). After the optimal lambda the error starts to be increased. The cv score is the opposite of the error so the cv score in the begining it's high and after the optimal lambda(where is the maximum) it drops down/
+```{r, echo=FALSE}
+```
 
-The optimal value of lambda 0.004508949. According to the plot for $lambda = 0.004508949$. We can see that the confidence intervals are equal so for the optimal $\lambda$ it's not 
-significantly better in predictions compared to $\lambda = log(-4)$. 
+We can see that the cv score is stable until the optimal lambda. After the optimal 
+lambda the cv score starts to increase. 
+
+We can see that the confidence intervals are equal so for the optimal $\lambda$ it's not  significantly better in predictions compared to $\lambda = log(-4)$. The optimal $\lambda$ is where is the first dotted line in the plot.
 
 ```{r, echo=FALSE}
-optimal_model$beta
+#optimal_model$beta
 ```
-We can that the model with the optimal $\lambda$ uses in total 7 features. These are:
 
-- Channel13
-- Channel14
-- Channel15
-- Channel16
-- Channel40
-- Channel41
-- Channel52
+We can see that the model with the optimal $\lambda$ uses in total 9 features. 
 
 ```{r, echo=FALSE, fig.align='center'}
-p
+n_of_coef = modelcv$nzero[which(modelcv$lambda.min == modelcv$lambda) ]
+cat("The optimal lambda is ", modelcv$lambda.min, "and it has ", n_of_coef, " features") 
 ```
 The red line represents a perfect model and the blue dots are our predictions. We
 can see that our model is not perfect but it's predictions are close to the real
