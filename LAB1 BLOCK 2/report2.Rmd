@@ -15,7 +15,7 @@ library(ggplot2)
 ```
 ## For M = 3 
 
-```{r, warning=FALSE, results='hide'}
+```{r, warning=FALSE, results='hide', include=FALSE}
 set.seed(1234567890)
 max_it <- 100 # max number of EM iterations
 min_change <- 0.1 # min change in log lik between two consecutive iterations
@@ -47,7 +47,7 @@ M=3 # number of clusters
 w <- matrix(nrow=n, ncol=M) # weights
 pi <- vector(length = M) # mixing coefficients
 mu <- matrix(nrow=M, ncol=D) # conditional distributions
-llik3 <- vector(length = max_it) # log likelihood of the EM iterations
+llik3 <- c() # log likelihood of the EM iterations
 
 # Random initialization of the parameters
 pi <- runif(M,0.49,0.51)
@@ -103,7 +103,7 @@ for(it in 1:max_it) {
   # Your code here
 
   if(it > 1){
-    if(abs(llik3[it] - llik3[it - 1]) <= 0.1){
+    if(llik3[it] - llik3[it - 1] <= 0.1){
       break
     }
   }  
@@ -138,7 +138,7 @@ cat("The pi values that we found are ", pi, " and the real values of pi are ", t
 
 ## For M = 4
 
-```{r, warning=FALSE, results='hide'}
+```{r, warning=FALSE, results='hide', include=FALSE}
 
 true_pi <- vector(length = 4) # true mixing coefficients
 true_mu <- matrix(nrow=3, ncol=D) # true conditional distributions
@@ -156,7 +156,7 @@ M=4 # number of clusters
 w <- matrix(nrow=n, ncol=M) # weights
 pi <- vector(length = M) # mixing coefficients
 mu <- matrix(nrow=M, ncol=D) # conditional distributions
-llik4 <- vector(length = max_it) # log likelihood of the EM iterations
+llik4 <- c() # log likelihood of the EM iterations
 
 # Random initialization of the parameters
 pi <- runif(M,0.49,0.51)
@@ -212,7 +212,7 @@ for(it in 1:max_it) {
   # Your code here
   
     if(it > 1){
-       if(abs(llik4[it] - llik4[it - 1]) <= 0.1){
+       if(llik4[it] - llik4[it - 1] <= 0.1){
          break
       }
     }  
@@ -247,7 +247,7 @@ cat("The pi values that we found are ", pi)
 
 
 ## For M = 2
-```{r, results='hide', warning=FALSE}
+```{r, results='hide', warning=FALSE, include=FALSE}
 max_it <- 100 # max number of EM iterations
 min_change <- 0.1 # min change in log lik between two consecutive iterations
 n=1000 # number of training points
@@ -266,11 +266,11 @@ for(i in 1:n) {
   m <- sample(1:2,1,prob=true_pi)
 }
 
-M=2 # number of clusters
+M= 2 # number of clusters
 w <- matrix(nrow=n, ncol=M) # weights
 pi <- vector(length = M) # mixing coefficients
 mu <- matrix(nrow=M, ncol=D) # conditional distributions
-llik2 <- vector(length = max_it) # log likelihood of the EM iterations
+llik2 <- c() # log likelihood of the EM iterations
 
 # Random initialization of the parameters
 pi <- runif(M,0.49,0.51)
@@ -323,11 +323,12 @@ for(it in 1:max_it) {
   # Your code here
   
     if(it > 1){
-       if(abs(llik2[it] - llik2[it - 1]) <= 0.1){
+       if(llik2[it] - llik2[it - 1] <= 0.1){
          break
       }
     }
   
+  print (abs(llik2[it] - llik2[it - 1]))
   #M-step: ML parameter estimation from the data and weights
   # Your code here
   
@@ -343,7 +344,7 @@ for(it in 1:max_it) {
 ```{r, echo=FALSE}
   par(mfrow=c(1,2))
   plot(mu[1,], type="o", col="blue", ylim=c(0,1),  ylab = "mu values", 
-     xlab = "Dimension", main = "For M = 4")
+     xlab = "Dimension", main = "For M = 2")
   points(mu[2,], type="o", col="red")
   plot(llik2, type="l", ylab="Loglikelihood", xlab="iterations", 
      main = "For M = 2")
@@ -354,7 +355,3 @@ for(it in 1:max_it) {
 cat("The pi values that we found are ", pi)
 ```
 
-
-```{r}
-df = data.frame(llik2, llik3, llik4, x= 1:length(llik2))
-```
