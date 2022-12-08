@@ -1,0 +1,357 @@
+---
+title: "Report 2"
+author: "Damian Ke & Kyriakos Papadopoulos"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(gridExtra)
+library(ggplot2)
+```
+## For M = 3 
+
+```{r, warning=FALSE, results='hide', include=FALSE}
+set.seed(1234567890)
+max_it <- 100 # max number of EM iterations
+min_change <- 0.1 # min change in log lik between two consecutive iterations
+n=1000 # number of training points
+D=10 # number of dimensions
+x <- matrix(nrow=n, ncol=D) # training data
+
+true_pi <- vector(length = 3) # true mixing coefficients
+true_mu <- matrix(nrow=3, ncol=D) # true conditional distributions
+true_pi=c(1/3, 1/3, 1/3)
+true_mu[1,]=c(0.5,0.6,0.4,0.7,0.3,0.8,0.2,0.9,0.1,1)
+true_mu[2,]=c(0.5,0.4,0.6,0.3,0.7,0.2,0.8,0.1,0.9,0)
+true_mu[3,]=c(0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5)
+
+# plot(true_mu[1,], type="o", col="blue", ylim=c(0,1))
+# points(true_mu[2,], type="o", col="red")
+# points(true_mu[3,], type="o", col="green")
+
+# Producing the training data
+
+for(i in 1:n) {
+  m <- sample(1:3,1,prob=true_pi)
+  for(d in 1:D) {
+    x[i,d] <- rbinom(1,1,true_mu[m,d])
+  }
+}
+
+M=3 # number of clusters
+w <- matrix(nrow=n, ncol=M) # weights
+pi <- vector(length = M) # mixing coefficients
+mu <- matrix(nrow=M, ncol=D) # conditional distributions
+llik3 <- c() # log likelihood of the EM iterations
+
+# Random initialization of the parameters
+pi <- runif(M,0.49,0.51)
+pi <- pi / sum(pi)
+for(m in 1:M) {
+  mu[m,] <- runif(D,0.49,0.51)
+}
+
+
+bern <- function(m, i){
+  numerator <- pi[m] * prod((((mu[m, ]) ^ x[i,]) * ((1 - mu[m, ]) ^ (1 - x[i,]))))
+
+  demonirator <- pi[1] * (prod((mu[1, ] ^ x[i,]) * ((1 - mu[1, ]) ^ (1 - x[i,])))) +
+                 pi[2] * (prod((mu[2, ] ^ x[i,]) * ((1 - mu[2, ]) ^ (1 - x[i,])))) +
+                 pi[3] * (prod((mu[3, ] ^ x[i,])* ((1 - mu[3, ]) ^ (1 - x[i,]))))
+
+  return(numerator / demonirator)
+}
+
+logv <- c()
+
+for(it in 1:max_it) {
+
+  # E-step: Computation of the weights
+  # Your code here
+
+  for(i in 1:nrow(x)){
+    w[i, 1] = bern(1, i)
+    w[i, 2] = bern(2, i)
+    w[i, 3] = bern(3, i)
+
+  }
+
+  #Log likelihood computation.
+  # Your code here
+
+  difference = 0
+  for (N in 1:n){
+    logpx = c()
+    for (m in 1:M){
+      logbern = 0
+      for (d in 1:D){
+        logbern = logbern + x[N,d]*log(mu[m,d])+(1-x[N,d])*log(1-mu[m,d])
+      }
+      logpx[m]= log(pi[m]) + logbern
+      difference = difference + w[N,m]*logpx[m]
+    }
+  }
+
+  llik3[it] = difference
+
+  # Stop if the log likelihood has not changed significantly
+  # Your code here
+
+  if(it > 1){
+    if(llik3[it] - llik3[it - 1] <= 0.1){
+      break
+    }
+  }  
+
+  #M-step: ML parameter estimation from the data and weights
+  # Your code here
+
+  # mu calculation
+  mu <- t(w) %*% x/colSums(w)
+
+  # Pi calulcation
+  pi <- colSums(w) / nrow(x)
+
+}
+
+```
+
+```{r, echo=FALSE}
+par(mfrow=c(1,2))
+plot(mu[1,], type="o", col="blue", ylim=c(0,1), ylab = "mu values", 
+     xlab = "Dimension", main = "For M = 3")
+points(mu[2,], type="o", col="red")
+points(mu[3,], type="o", col="green")
+plot(llik3[1:it], type="l", ylab="Loglikelihood", xlab="iterations", 
+     main = "For M = 3")
+```
+
+```{r, echo=FALSE}
+cat("The pi values that we found are ", pi, " and the real values of pi are ", true_pi)
+```
+
+
+## For M = 4
+
+```{r, warning=FALSE, results='hide', include=FALSE}
+
+true_pi <- vector(length = 4) # true mixing coefficients
+true_mu <- matrix(nrow=3, ncol=D) # true conditional distributions
+
+# We changed here it initialize the m
+true_pi=c(1/4, 1/4, 1/4, 1/4)
+
+# Producing the training data
+
+for(i in 1:n) {
+  m <- sample(1:4,1,prob=true_pi)
+}
+
+M=4 # number of clusters
+w <- matrix(nrow=n, ncol=M) # weights
+pi <- vector(length = M) # mixing coefficients
+mu <- matrix(nrow=M, ncol=D) # conditional distributions
+llik4 <- c() # log likelihood of the EM iterations
+
+# Random initialization of the parameters
+pi <- runif(M,0.49,0.51)
+pi <- pi / sum(pi)
+for(m in 1:M) {
+  mu[m,] <- runif(D,0.49,0.51)
+}
+
+bern <- function(m, i){
+  numerator <- pi[m] * prod((((mu[m, ]) ^ x[i,]) * ((1 - mu[m, ]) ^ (1 - x[i,]))))
+
+  demonirator <- pi[1] * (prod((mu[1, ] ^ x[i,]) * ((1 - mu[1, ]) ^ (1 - x[i,])))) +
+                 pi[2] * (prod((mu[2, ] ^ x[i,]) * ((1 - mu[2, ]) ^ (1 - x[i,])))) +
+                 pi[3] * (prod((mu[3, ] ^ x[i,])* ((1 - mu[3, ]) ^ (1 - x[i,])))) +
+                 pi[4] * (prod((mu[4, ] ^ x[i,])* ((1 - mu[4, ]) ^ (1 - x[i,]))))
+
+  return(numerator / demonirator)
+}
+
+
+for(it in 1:max_it) {
+
+  # E-step: Computation of the weights
+  # Your code here
+
+  for(i in 1:nrow(x)){
+    w[i, 1] = bern(1, i)
+    w[i, 2] = bern(2, i)
+    w[i, 3] = bern(3, i)
+    w[i, 4] = bern(4, i)
+  }
+
+    #Log likelihood computation.
+  # Your code here
+
+  difference = 0
+  for (N in 1:n){
+    logpx = c()
+    for (m in 1:M){
+      logbern = 0
+      for (d in 1:D){
+        logbern = logbern + x[N,d]*log(mu[m,d])+(1-x[N,d])*log(1-mu[m,d])
+      }
+      logpx[m]= log(pi[m]) + logbern
+      difference = difference + w[N,m]*logpx[m]
+    }
+  }
+
+  llik4[it] = difference
+
+
+  # Stop if the lok likelihood has not changed significantly
+  # Your code here
+  
+    if(it > 1){
+       if(llik4[it] - llik4[it - 1] <= 0.1){
+         break
+      }
+    }  
+
+  #M-step: ML parameter estimation from the data and weights
+  # Your code here
+
+  # mu calculation
+  mu <- t(w) %*% x/colSums(w)
+
+  # Pi calulcation
+  pi <- colSums(w) / nrow(x)
+
+}
+```
+
+```{r, echo=FALSE}
+  par(mfrow=c(1,2))
+  plot(mu[1,], type="o", col="blue", ylim=c(0,1),  ylab = "mu values", 
+     xlab = "Dimension", main = "For M = 4")
+  points(mu[2,], type="o", col="red")
+  points(mu[3,], type="o", col="green")
+  points(mu[4,], type="o", col="yellow")
+  plot(llik4, type="l", ylab="Loglikelihood", xlab="iterations", 
+     main = "For M = 4")
+  
+```
+
+```{r, echo=FALSE}
+cat("The pi values that we found are ", pi)
+```
+
+
+## For M = 2
+```{r, results='hide', warning=FALSE, include=FALSE}
+max_it <- 100 # max number of EM iterations
+min_change <- 0.1 # min change in log lik between two consecutive iterations
+n=1000 # number of training points
+D=10 # number of dimensions
+
+true_pi <- vector(length = 2) # true mixing coefficients
+true_mu <- matrix(nrow=3, ncol=D) # true conditional distributions
+true_pi=c(1/2, 1/2)
+
+
+
+
+# Producing the training data
+
+for(i in 1:n) {
+  m <- sample(1:2,1,prob=true_pi)
+}
+
+M= 2 # number of clusters
+w <- matrix(nrow=n, ncol=M) # weights
+pi <- vector(length = M) # mixing coefficients
+mu <- matrix(nrow=M, ncol=D) # conditional distributions
+llik2 <- c() # log likelihood of the EM iterations
+
+# Random initialization of the parameters
+pi <- runif(M,0.49,0.51)
+pi <- pi / sum(pi)
+for(m in 1:M) {
+  mu[m,] <- runif(D,0.49,0.51)
+}
+
+bern <- function(m, i){
+  numerator <- pi[m] * prod((((mu[m, ]) ^ x[i,]) * ((1 - mu[m, ]) ^ (1 - x[i,]))))
+  
+  demonirator <- pi[1] * (prod((mu[1, ] ^ x[i,]) * ((1 - mu[1, ]) ^ (1 - x[i,])))) +
+    pi[2] * (prod((mu[2, ] ^ x[i,]) * ((1 - mu[2, ]) ^ (1 - x[i,]))))
+  
+  return(numerator / demonirator)
+}
+
+
+
+for(it in 1:max_it) {
+
+  # E-step: Computation of the weights
+  # Your code here
+  
+  for(i in 1:nrow(x)){
+    w[i, 1] = bern(1, i)
+    w[i, 2] = bern(2, i)
+  }
+
+  #Log likelihood computation.
+  # Your code here
+  
+  difference = 0
+  for (N in 1:n){
+    logpx = c()
+    for (m in 1:M){
+      logbern = 0
+      for (d in 1:D){
+        logbern = logbern + x[N,d]*log(mu[m,d])+(1-x[N,d])*log(1-mu[m,d])
+      }
+      logpx[m]= log(pi[m]) + logbern
+      difference = difference + w[N,m]*logpx[m]
+    }
+  }
+  
+  llik2[it] = difference
+
+  
+  # Stop if the lok likelihood has not changed significantly
+  # Your code here
+  
+    if(it > 1){
+       if(llik2[it] - llik2[it - 1] <= 0.1){
+         break
+      }
+    }
+  
+  print (abs(llik2[it] - llik2[it - 1]))
+  #M-step: ML parameter estimation from the data and weights
+  # Your code here
+  
+  # mu calculation
+  mu <- t(w) %*% x/colSums(w)
+  
+  # Pi calulcation
+  pi <- colSums(w) / nrow(x)
+}
+
+```
+
+```{r, echo=FALSE}
+  par(mfrow=c(1,2))
+  plot(mu[1,], type="o", col="blue", ylim=c(0,1),  ylab = "mu values", 
+     xlab = "Dimension", main = "For M = 2")
+  points(mu[2,], type="o", col="red")
+  plot(llik2, type="l", ylab="Loglikelihood", xlab="iterations", 
+     main = "For M = 2")
+```
+
+
+```{r, echo=FALSE}
+cat("The pi values that we found are ", pi)
+```
+

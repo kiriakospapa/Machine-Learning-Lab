@@ -1,0 +1,397 @@
+---
+title: "Lab 1 Block 2"
+author: "Damian Ke & Kyriakos Papadopoulos"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+## Statement of contribution
+For lab 1 block 2, Kyriakos Papadopoulos coded assignment 1 and Damian Ke coded assignment 2. Thereafter both group members discussed and answered questions for both assignments. Lastly Kyriakos added the code to Rmarkdown.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Assigment 1
+```{r, include=FALSE}
+library(randomForest)
+library(gridExtra)
+library(ggplot2)
+
+# Training 
+x1<-runif(100)
+x2<-runif(100)
+trdata<-cbind(x1,x2)
+y<-as.numeric(x1<x2)
+trlabels<-as.factor(y)
+
+# Test
+set.seed(1234)
+x1<-runif(1000)
+x2<-runif(1000)
+tedata<-cbind(x1,x2)
+y<-as.numeric(x1<x2)
+telabels<-as.factor(y)
+plot(x1,x2,col=(y+1))
+
+# miss class function
+missclass=function(X){
+  n=sum(X)
+  a = sum(diag(X))/n
+  return(1-a)
+}
+```
+
+**Question 1: ** Repeat the procedure above for 1000 training datasets of size 100 and report the mean and variance of the misclassification errors. In other words, create 1000 training datasets of size 100, learn a random forest from each dataset, and compute the misclassification error in the same test dataset of size 1000. Report results for when the random forest has 1, 10 and 100 trees.
+
+**Answer 1: **
+```{r, include=FALSE}
+# first dot
+n = 1000
+
+ms_error1 <- c()
+ms_error10 <- c()
+ms_error100 <- c()
+for(i in 1:n){
+  x1<-runif(100)
+  x2<-runif(100)
+  trdata<-cbind(x1,x2)
+  y1<-as.numeric(x1<x2)
+  trlabels<-as.factor(y1)
+  df <- data.frame(x1, x2, trlabels)
+  
+  set.seed(1234)
+  x1<-runif(1000)
+  x2<-runif(1000)
+  tedata<-cbind(x1,x2)
+  y<-as.numeric(x1<x2)
+  telabels<-as.factor(y)
+
+  model1 <- randomForest(trlabels ~ x1 + x2, data = df, nodesize=25, keep.forest = TRUE,
+                            ntree = 1)
+  
+  model2 <- randomForest(trlabels ~ x1 + x2, data = df, nodesize=25, keep.forest = TRUE,
+                          ntree = 10)
+  
+  model3 <- randomForest(trlabels ~ x1 + x2, data = df, nodesize=25, keep.forest = TRUE,
+                          ntree = 100)
+  
+  pred1 <- predict(model1, tedata)
+  pred2 <- predict(model2, tedata)
+  pred3 <- predict(model3, tedata)
+
+  confusion_matrix_1 = table(y, pred1)
+  confusion_matrix_10 = table(y, pred2)
+  confusion_matrix_100 = table(y, pred3)
+  
+  ms_error1 <- append(ms_error1, missclass(confusion_matrix_1))
+  ms_error10 <- append(ms_error10, missclass(confusion_matrix_10))
+  ms_error100 <- append(ms_error100, missclass(confusion_matrix_100))
+  
+}
+```
+
+
+```{r, echo=FALSE}
+
+df = data.frame(mean=c(mean(ms_error1), mean(ms_error10), mean(ms_error100)),
+                variance=c(var(ms_error1), var(ms_error10), var(ms_error100)))
+rownames(df) <- c("K = 1", "K = 10", "K = 100")
+knitr::kable(df)
+```
+
+**Question 2: ** Repeat the exercise above but this time use the condition (x1<0.5) instead of (x1<x2) when producing the training and test datasets.
+
+**Answer 2: **
+```{r, include=FALSE}
+set.seed(1234)
+x1<-runif(1000)
+x2<-runif(1000)
+tedata<-cbind(x1,x2)
+y<-as.numeric(x1 < 0.5)
+telabels<-as.factor(y)
+
+n = 1000
+
+ms2_error1 <- c()
+ms2_error10 <- c()
+ms2_error100 <- c()
+for(i in 1:n){
+  x1<-runif(100)
+  x2<-runif(100)
+  trdata<-cbind(x1,x2)
+  y1<-as.numeric(x1 < 0.5)
+  trlabels<-as.factor(y1)
+  df <- data.frame(x1, x2, trlabels)
+  
+
+  model1 <- randomForest(trlabels ~ x1 + x2, data = df, nodesize=25, keep.forest = TRUE,
+                         ntree = 1)
+  
+  model2 <- randomForest(trlabels ~ x1 + x2, data = df, nodesize=25, keep.forest = TRUE,
+                         ntree = 10)
+  
+  model3 <- randomForest(trlabels ~ x1 + x2, data = df, nodesize=25, keep.forest = TRUE,
+                         ntree = 100)
+  
+  pred1 <- predict(model1, tedata)
+  pred2 <- predict(model2, tedata)
+  pred3 <- predict(model3, tedata)
+  
+  confusion_matrix_1 = table(telabels, pred1)
+  confusion_matrix_10 = table(telabels, pred2)
+  confusion_matrix_100 = table(telabels, pred3)
+  
+  ms2_error1 <- append(ms2_error1, missclass(confusion_matrix_1))
+  ms2_error10 <- append(ms2_error10, missclass(confusion_matrix_10))
+  ms2_error100 <- append(ms2_error100, missclass(confusion_matrix_100))
+}
+```
+
+```{r, echo=FALSE}
+df = data.frame(mean=c(mean(ms2_error1), mean(ms2_error10), mean(ms2_error100)),
+                variance=c(var(ms2_error1), var(ms2_error10), var(ms2_error100)))
+rownames(df) <- c("K = 1", "K = 10", "K = 100")
+knitr::kable(df)
+```
+
+**Question 3: ** Repeat the exercise above but this time use the condition ((x1<0.5 & x2<0.5) | (x1>0.5 & x2>0.5)) instead of (x1<x2) when producing the training and test datasets. Unlike above, use nodesize = 12 for this exercise.
+
+**Answer 3: ** 
+
+```{r, include=FALSE}
+set.seed(1234)
+x1<-runif(1000)
+x2<-runif(1000)
+tedata<-cbind(x1,x2)
+y<-as.numeric((x1<0.5 & x2<0.5) | (x1>0.5 & x2>0.5))
+telabels<-as.factor(y)
+
+n = 1000
+
+ms3_error1 <- c()
+ms3_error10 <- c()
+ms3_error100 <- c()
+for(i in 1:n){
+  x1<-runif(100)
+  x2<-runif(100)
+  trdata<-cbind(x1,x2)
+  y1<-as.numeric ((x1<0.5 & x2<0.5) | (x1>0.5 & x2>0.5)) 
+  trlabels<-as.factor(y1)
+  df <- data.frame(x1, x2, trlabels)
+  
+  model1 <- randomForest(trlabels ~ x1 + x2, data = df, nodesize=12, keep.forest = TRUE,
+                         ntree = 1)
+  
+  model2 <- randomForest(trlabels ~ x1 + x2, data = df, nodesize=12, keep.forest = TRUE,
+                         ntree = 10)
+  
+  model3 <- randomForest(trlabels ~ x1 + x2, data = df, nodesize=12, keep.forest = TRUE,
+                         ntree = 100)
+  
+  pred1 <- predict(model1, tedata)
+  pred2 <- predict(model2, tedata)
+  pred3 <- predict(model3, tedata)
+  
+  confusion_matrix_1 = table(y, pred1)
+  confusion_matrix_10 = table(y, pred2)
+  confusion_matrix_100 = table(y, pred3)
+  
+  ms3_error1 <- append(ms3_error1, missclass(confusion_matrix_1))
+  ms3_error10 <- append(ms3_error10, missclass(confusion_matrix_10))
+  ms3_error100 <- append(ms3_error100, missclass(confusion_matrix_100))
+}
+```
+
+```{r, echo=FALSE}
+df = data.frame(mean=c(mean(ms3_error1), mean(ms3_error10), mean(ms3_error100)),
+                variance=c(var(ms3_error1), var(ms3_error10), var(ms3_error100)))
+rownames(df) <- c("K = 1", "K = 10", "K = 100")
+knitr::kable(df)
+```
+
+**Question 4: ** What happens with the mean error rate when the number of trees in the random forest grows? Why?
+
+**Answer 4: ** We can see that in all 3 cases mean error decreases when the number
+of trees gets bigger. But, the big decrease in terms of error is from K=1 to K=10.
+The error decreases from K=10 to K=100, but not so much as previously. This is can be easily explained from slide 8 at lecture Lecture1aBlock22021. We can see that for random forest as we increase the number of trees we get a smaller error. but after a point the error becomes almost stable and don't see any big difference to error even if we increase the number of trees a lot. That's what happens from K=10 to K=100. 
+
+**Question 5: ** The third dataset represents a slightly more complicated classification problem than the first one. Still, you should get better performance for it when using sufficient trees in the random forest. Explain why you get better performance.
+
+**Answer 5: **
+
+```{r, echo=FALSE, fig.align='center'}
+par(mfrow=c(1,2))
+
+# Visualazing test dataset 1
+set.seed(1234)
+x1<-runif(1000)
+x2<-runif(1000)
+tedata<-cbind(x1,x2)
+y<-as.numeric(x1<x2)
+telabels<-as.factor(y)
+plot(x1,x2,col=(y+1), main = "x1 < x2")
+
+# Visualazing test dataset 3
+set.seed(1234)
+x1 <- runif(1000)
+x2 <- runif(1000)
+tedata <- cbind(x1,x2)
+y <- as.numeric((x1<0.5 & x2<0.5) | (x1>0.5 & x2>0.5))
+telabels <- as.factor(y)
+plot(x1,x2,col=(y+1), main = "(x1<0.5 & x2<0.5) | (x1>0.5 & x2>0.5)")
+
+
+```
+
+The reason that we get better performance when using sufficient trees in the third dataset compared to the first dataset, it's because the first dataset is much simpler. As we can see, we can seperate almost perfectly the data in the first dataset with only one diagonical line. On the other hand, the third dataset can not be seperated so good as it's more complicated. So, when the number of trees increases the model becomes more complicated so that's why we have a bigger error in for k=10 and k=100 for the first dataset compared to the third one. For that number of trees the model is very complicated to handle a so simple dataset like the first one. One more reason is that we reduced the node size from 25 to 12 for the third dataset. According the to the documentation of Randomforest we can see that the nodesize defines the minimum size of terminal nodes. Setting this number larger causes smaller trees to be grown. With a bigger tree we will get a more complicated model so with a more complicated model we can make better predictions on a complicated dataset like the third one.
+
+**Note: ** According to the book, EM-method has 2 steps.
+Step E: requires to compute the $Q(\theta)$ which corresponds for
+$\Sigma_y ln(p(X,y|\theta))*p(y|X,\hat{\theta})$ Which can be explained as 
+$\Sigma_yln(p(X,y|\theta)))*w_i(m)$ Step M: $\hat{\theta} <-$ $arg max_\theta$ $Q(\theta)$ 
+Which can be explained as a difference between each iteration to find maximal values. 
+Where the iterations ends if the corresponding value of min_change does not change. 
+Which means that a optimal point was found.
+
+## Assigment 2
+
+```{r, echo=FALSE}
+for (m_values in 2:4){
+  set.seed(1234567890)
+  max_it <- 100 # max number of EM iterations
+  min_change <- 0.1 # min change in log lik between two consecutive iterations
+  n=1000 # number of training points
+  D=10 # number of dimensions
+  x <- matrix(nrow=n, ncol=D) # training data
+  true_pi <- vector(length = 3) # true mixing coefficients
+  true_mu <- matrix(nrow=3, ncol=D) # true conditional distributions
+  true_pi=c(1/3, 1/3, 1/3)
+  true_mu[1,]=c(0.5,0.6,0.4,0.7,0.3,0.8,0.2,0.9,0.1,1)
+  true_mu[2,]=c(0.5,0.4,0.6,0.3,0.7,0.2,0.8,0.1,0.9,0)
+  true_mu[3,]=c(0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5,0.5)
+  # plot(true_mu[1,], type="o", col="blue", ylim=c(0,1))
+  # points(true_mu[2,], type="o", col="red")
+  # points(true_mu[3,], type="o", col="green")
+  # Producing the training data
+  for(i in 1:n) {
+    m <- sample(1:3,1,prob=true_pi)
+    for(d in 1:D) {
+      x[i,d] <- rbinom(1,1,true_mu[m,d])
+    }
+  }
+  M=m_values # number of clusters
+  w <- matrix(nrow=n, ncol=M) # weights
+  pi <- vector(length = M) # mixing coefficients
+  mu <- matrix(nrow=M, ncol=D) # conditional distributions
+  llik <- vector(length = max_it) # log likelihood of the EM iterations
+  # Random initialization of the parameters
+  pi <- runif(M,0.49,0.51)
+  pi <- pi / sum(pi)
+  for(m in 1:M) {
+    mu[m,] <- runif(D,0.49,0.51)
+  }
+  pi
+  mu
+
+  for(it in 1:max_it) {
+    Sys.sleep(0.5)
+    # E-step: Computation of the weights
+    for (N in 1:n){
+      px = c()
+      for (m in 1:M){
+        bern = 1
+        for (d in 1:D){
+          bern = bern * (mu[m,d]**x[N,d])*((1-mu[m,d])**(1-x[N,d]))
+        }
+        px[m]= (pi[m] * bern)
+      }
+      for (m in 1:M){
+        w[N,m] = px[m]/sum(px) 
+      }
+    }
+    #Log likelihood computation.
+    difference = 0
+    for (N in 1:n){
+      logpx = c()
+      for (m in 1:M){
+        logbern = 0
+        for (d in 1:D){
+          logbern = logbern + x[N,d]*log(mu[m,d])+(1-x[N,d])*log(1-mu[m,d])
+        }
+        logpx[m]= log(pi[m]) + logbern
+        difference = difference + w[N,m]*logpx[m]
+      }
+    }
+    llik[it] = difference
+    #cat("iteration: ", it, "log likelihood: ", llik[it], "\n")
+    #flush.console()
+    # Stop if the lok likelihood has not changed significantly
+    if(it > 1){
+      if(abs(llik[it] - llik[it - 1]) <= 0.1){
+        break
+      }
+    }
+    #M-step: ML parameter estimation from the data and weights
+    mu <- t(w) %*% x/colSums(w)
+    # Pi calulcation
+    pi <- colSums(w) / nrow(x)
+  }
+  
+  if(M==2){
+    df_mu = data.frame(mu[1,],mu[2,],1:D)
+    df_llik = data.frame(1:it,llik[1:it])
+    colnames(df_mu) =c("mu_1","mu_2","Dimensions")
+    colnames(df_llik) = c("Iterations","llik_iterations")
+    p_1 = ggplot(df_mu, aes(x=Dimensions))+
+      geom_line(aes(y=mu_1),color="red")+
+      geom_line(aes(y=mu_2),color="blue")+
+      ylab("Mu")+ggtitle("Mu for M=2")
+    
+    pl_1 = ggplot(df_llik, aes(x=Iterations))+
+      geom_line(aes(y=llik_iterations))+
+      ylab("Loglikelihood")+ggtitle("Loglikelihood for M=2")
+  }
+  else if(M==3){
+    df_mu = data.frame(mu[1,],mu[2,],mu[3,],1:D)
+    df_llik = data.frame(1:it,llik[1:it])
+    colnames(df_mu) =c("mu_1","mu_2","mu_3","Dimensions")
+    colnames(df_llik) = c("Iterations","llik_iterations")
+    p_2 = ggplot(df_mu, aes(x=Dimensions))+
+      geom_line(aes(y=mu_1),color="red")+
+      geom_line(aes(y=mu_2),color="blue")+
+      geom_line(aes(y=mu_3))+
+      ylab("Mu")+ggtitle("Mu for M=3")
+    
+    pl_2 = ggplot(df_llik, aes(x=Iterations))+
+      geom_line(aes(y=llik_iterations))+
+      ylab("Loglikelihood")+ggtitle("Loglikelihood for M=3")
+    
+  }
+  else if(M==4){
+    df_mu = data.frame(mu[1,],mu[2,],mu[3,],mu[4,],1:D)
+    df_llik = data.frame(1:it,llik[1:it])
+    colnames(df_mu) =c("mu_1","mu_2","mu_3","mu_4","Dimensions")
+    colnames(df_llik) = c("Iterations","llik_iterations")
+    p_3 = ggplot(df_mu, aes(x=Dimensions))+
+      geom_line(aes(y=mu_1),color="red")+
+      geom_line(aes(y=mu_2),color="blue")+
+      geom_line(aes(y=mu_3))+
+      geom_line(aes(y=mu_4),color="cyan")+
+      ylab("Mu")+ggtitle("Mu for M=4")
+    
+    pl_3 = ggplot(df_llik, aes(x=Iterations))+
+      geom_line(aes(y=llik_iterations))+
+      ylab("Loglikelihood")+ggtitle("Loglikelihood for M=4")
+    
+  }
+}
+grid.arrange(p_1, p_2,p_3, ncol=3)
+grid.arrange(pl_1, pl_2,pl_3, ncol=3)
+```
+
+## Appendix
+
+```{r ref.label=knitr::all_labels(), echo=TRUE, eval=FALSE}
+```
