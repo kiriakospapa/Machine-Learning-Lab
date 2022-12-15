@@ -1,0 +1,224 @@
+---
+title: "Assignment 2"
+author: "Damian Ke and Kyriakos Papadopoulos"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Assignment 1. KERNEL METHODS
+Implement a kernel method to predict the hourly temperatures for a date and place in Sweden.
+To do so, you are provided with the files stations.csv and temps50k.csv. These
+files contain information about weather stations and temperature measurements in the stations
+at different days and times. The data have been kindly provided by the Swedish Meteorological
+and Hydrological Institute (SMHI).
+You are asked to provide a temperature forecast for a date and place in Sweden. The
+forecast should consist of the predicted temperatures from 4 am to 24 pm in an interval of 2
+hours. Use a kernel that is the sum of three Gaussian kernels:
+Y The first to account for the physical distance from a station to the point of interest. For
+this purpose, use the function distHaversine from the R package geosphere.
+Y The second to account for the distance between the day a temperature measurement
+was made and the day of interest.
+Y The third to account for the distance between the hour of the day a temperature measurement
+was made and the hour of interest.
+Choose an appropriate smoothing coefficient or width for each of the three kernels above.
+No cross-validation should be used. Instead, choose manually a width that gives large kernel
+values to closer points and small values to distant points. Show this with a plot of the kernel
+value as a function of distance. Help: Note that the file temps50k.csv may contain temperature
+measurements that are posterior to the day and hour of your forecast. You must filter
+such measurements out, i.e. they cannot be used to compute the forecast.
+Finally, repeat the exercise above by combining the three kernels into one by multiplying
+them, instead of summing them up. Compare the results obtained in both cases and elaborate
+on why they may differ.
+The only R package that is allowed to solve this assignment is the geosphere package
+(specifically, the function distHaversine). Feel free to use the template below to solve the
+assignment.
+
+```{r, echo=FALSE}
+set.seed(1234567890)
+library(ggplot2)
+library(geosphere)
+#Else could not read the file, required fileEncoding
+#Changed to read.csv2 to be able to read.
+stations <- read.csv2("stations.csv",fileEncoding = "windows-1258")
+temps <- read.csv("temps50k.csv")
+st <- merge(stations,temps,by="station_number")
+
+
+# These three values are up to the students
+h_distance <- 20
+h_date <- 30
+h_time <- 2
+
+#The point to predict (up to the students) - Falun-Lugnet
+a <- 60.619 
+b <- 15.6603
+
+date_predicted <- "2007-10-08" # The date to predict (up to the students)
+times <- c("04:00:00", "06:00:00", "08:00:00","10:00:00","12:00:00","14:00:00",
+           "16:00:00","18:00:00","20:00:00","22:00:00","24:00:00")
+
+# Students’ code here
+#Filtering data
+filtered_data = subset(st, as.Date(date) < as.Date(date_predicted))
+
+#Converting columns to correct type
+filtered_data$time = strptime(filtered_data$time, format="%H:%M:%S")
+filtered_data$longitude = as.numeric(filtered_data$longitude)
+filtered_data$latitude = as.numeric(filtered_data$latitude)
+
+
+#Adding 3 Kernels
+
+#Kernel 1
+#The first to account for the physical distance from a station to the point of interest. For
+#this purpose, use the function distHaversine from the R package geosphere.
+
+#Calculated in meters --> Divided by 1000 to get in km
+distance_difference = distHaversine(c(b,a),rev(filtered_data[,4:5]))/1000
+
+
+#Kernel 2
+# The second to account for the distance between the day a temperature measurement
+#was made and the day of interest.
+day_difference = as.numeric(as.Date(date_predicted)-as.Date(filtered_data$date))%%365
+
+#Kernel 3
+#The third to account for the distance between the hour of the day a temperature measurement was made 
+#and the hour of interest.
+time_difference = matrix(nrow=nrow(filtered_data),ncol=length(times))
+i=1
+#For loop to calculate the difference for each hourly temperature.
+for (time in times){
+  time_difference[,i] = abs(as.integer(difftime(strptime(time,format="%H:%M:%S"),
+                                               filtered_data$time, units="hours")))
+  
+  i=i+1
+}
+#Issue that prediction goes up for time difference after 12.
+time_difference = ifelse(time_difference >12, 24-time_difference, time_difference)
+
+#Calculations of Gaussian kernels with kernel trick
+results_distance = exp(((-distance_difference**2)/(2*(h_distance**2))))
+results_day = exp(((-day_difference**2)/(2*(h_date**2))))
+results_time = exp(((-time_difference**2)/(2*(h_time**2))))
+
+#Addition Predictions
+pred_added = (results_distance+results_day+results_time)
+
+results_added= matrix()
+#Loop to calculate the prediction for each hour.
+for(i in 1:length(times)){
+  results_added[i] = sum(pred_added[,i]*filtered_data$air_temperature)/sum(pred_added[,i])
+}
+
+
+#Multiplied
+pred_multiplied = (results_distance*results_day*results_time)
+
+results_multiplied = matrix()
+for(i in 1:length(times)){
+  results_multiplied[i] = sum(pred_multiplied[,i]*filtered_data$air_temperature)/sum(pred_multiplied[,i])
+}
+
+#Plot the results
+plot_df_sum_add = data.frame(results_added, results_multiplied,times)
+colnames(plot_df_sum_add) = c("Added", "Multiplied","Times")
+
+plot_df_sum_add = ggplot(plot_df_sum_add, aes(x=as.factor(substr(Times,1,5))))+
+  geom_point(aes(y=Added, color="Added Kernel"))+
+  geom_point(aes(y=Multiplied, color="Multiplied Kernel"))+
+  xlab("Time")+
+  ylab("Prediction")+
+  ggtitle("Prediction for Added and Multiplied Kernels")+
+  scale_color_manual(name="Definitions", values=c("Added Kernel"="red", 
+                                                  "Multiplied Kernel"="blue"))
+
+```
+
+## Question 1
+Choose manually a width that gives large kernel values to closer points and small values to distant points
+Show this with a plot of the kernel value as a function of distance.
+
+
+```{r, echo=FALSE}
+#Plot of results vs distance
+plot_df_3 = data.frame(results_distance, distance_difference)
+colnames(plot_df_3) = c("Value", "Distance")
+
+ggplot(plot_df_3, aes(x=Distance,y=Value))+
+  geom_line()+
+  xlab("Distance Difference")
+
+
+plot_df_4 = data.frame(results_day, day_difference)
+colnames(plot_df_4) = c("Value", "Distance")
+
+ggplot(plot_df_4, aes(x=Distance,y=Value))+
+  geom_line()+
+  xlab("Day Difference")
+
+
+plot_df_5 = data.frame(results_time[,11], time_difference[,11])
+colnames(plot_df_5) = c("Value", "Distance")
+
+ggplot(plot_df_5, aes(x=Distance,y=Value))+
+  geom_line()+
+  xlab("Time Difference")
+
+```
+
+**Answer**
+
+The chosen kernels widths are:
+Distance : `r h_distance`
+
+Date : `r h_date`
+
+Time : `r h_time`
+
+Important to mention that distance was divided by 1000 to get the distance into Kilometers.
+Therefore, the width of distance was set to 20km which seemed to give reasonable values.
+
+The date was divided into modulo 365 to better predict the impact of each month.
+The width was set to 30 so it can find a difference for each month which gave good prediction.
+For this exercise, the date was also tested on total date difference. But it seemed
+that it gave worse results than the earlier option, therefore modulo of 365 was used.
+
+Lastly, for time difference if values were larger than 12, then it would calculate 24-time difference to get
+correct values. Else there would be an increase of temperature at about hours 18-24.
+The width of time was set to 2, which seemed to be better at predicting the temperature
+at different times.
+
+## Question 2 
+Compare the results obtained in both cases and elaborate
+on why they may differ.
+
+```{r, echo=FALSE}
+plot_df_sum_add
+```
+
+**Answer**
+Chosen location is (60.619, 15.6603) which is Falun-Lugnet.
+The predicted date is "2007-10-08". The chosen location and date was used to predict
+the actual temperature within the dataset. 
+For date "2007-10-08" at time 06.00 the temperature was 6.9 degrees.
+Which shows that both methods were quite close to the predicted value.
+
+As it can be seen in the figure, the multiplied kernel has higher prediction values than
+the added one. Also there seem to be smaller temperature variation in the added kernel, meanwhile
+the multiplied one has higher variance. 
+For added kernel, each kernel has their own value which is not impacted by values from the other
+kernels. For the multiplied kernel, each kernel impact the value of the others as they are multiplicated.
+Therefore, values of the kernels has a bigger impact on the total prediction which is
+why there is a difference between these kernels.
+
+In addition, kernels width have impact on these results, as the graph lines in question 1 impact the total prediction.
+For larger values of the width, additional kernel differences will have larger kernel values and will therefore 
+impact the kernel.
+Meanwhile for small values of width, the large kernel values will have less value and therefore
+have smaller impact on the kernel.
+
