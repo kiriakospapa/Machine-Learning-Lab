@@ -1,0 +1,147 @@
+---
+title: "Assignment 2"
+author: "Damian Ke and Kyriakos Papadopoulos"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Assignment 2: Bootstrap, jackknife and confidence intervals
+
+#Question 1
+Plot the histogram of Price. Does it remind any conventional distribution? Compute the
+mean price.
+```{r}
+library(ggplot2)
+
+
+
+#Assignment 2:
+df = read.csv2("prices1.csv")
+p = ggplot(df, aes(x=Price)) +
+  geom_histogram(binwidth=150)
+p
+
+mean_price = mean(df$Price)
+
+#Looks like gamma?
+
+
+```
+
+**Answer**
+The di
+
+#Question 2
+Estimate the distribution of the mean price of the house using bootstrap. Determine the
+bootstrap bias–correction and the variance of the mean price. Compute a 95% confidence
+interval for the mean price using bootstrap percentile, bootstrap BCa, and first–order
+normal approximation.
+```{r}
+library(boot)
+
+set.seed(12345)
+stat1 = function(data,vn){
+  mean(data[vn,]$Price)
+}
+
+
+res=boot(df,stat1,R=1000)
+res
+
+
+###Determine the bootstrap bias - correction and the variance of the mean price.
+#Bootstrap bias corrections in slides and variance estimation in slides.
+B=1000 #Q: As R --> 1000?
+
+
+#Q:I got lost on Krzysztof slides the estimator w = T(D)
+# Then what is Bar T(D*) -->
+#Q:#Whats res$t0 exactly? As mean(res$t) is similar to res$t0.
+#Should i use mean(res$t) or just res$t0?
+t_1 = 2*res$t0-mean(res$t)
+
+#Variance
+var_t = (1/(B-1))*(sum((res$t-mean(res$t))^2))
+
+
+#Q: Is this enough to show percentile, bca and normal? As basic is within?
+print(boot.ci(res))
+
+plot(res)
+
+```
+
+**Answer**
+
+#Question 3
+Estimate the variance of the mean price using the jackknife and compare it with the
+bootstrap estimate
+
+```{r}
+n = length(df$Price)
+#n = B
+#Jackknife variance
+#Q: According to Oleg - T(D_1) = Mean of the sample 1. 
+#Does it also work for jackknife then or should we use other estimator?
+#Length of the datasample
+#Q: Should the n for jackknife variance be equal as 2022 lecture = B
+#Or as in oleg that it is equal to length of the sample (Where we say that k =1)
+#(So r = n)
+t_j = rep(0,n)
+for (j in 1:n){
+  t_j[j] = n*mean(df$Price)-(n-1)*mean(df$Price[-j])
+}
+j_t = mean(t_j)
+
+var_t3 = (1/(n*(n-1)))*sum((t_j-j_t)**2)
+
+
+```
+
+**Answer*
+
+
+##Question 4
+Compare the confidence intervals obtained with respect to their length and the location of
+the estimated mean in these intervals.
+```{r}
+#4 - Look at it
+interval = boot.ci(res)
+interval_percentile = interval$percent[1,4:5]
+interval_bca = interval$bca[1,4:5]
+interval_normal = interval$normal[1,2:3]
+
+#As it states confidence intervals obtained with respect to their length.
+#Small Q: As Confidence intervals were calculated by inbuilt formula.
+#Is this enough for this assignment?
+
+p_percentile = ggplot(df, aes(x=Price)) +
+  geom_histogram(binwidth=150)+
+  geom_vline(xintercept=interval_percentile[1:2])+
+  geom_vline(xintercept=t_1)
+p_percentile
+
+p_bca =  ggplot(df, aes(x=Price)) +
+  geom_histogram(binwidth=150)+
+  geom_vline(xintercept=interval_bca[1:2])+
+  geom_vline(xintercept=t_1)
+p_bca
+
+p_normal =  ggplot(df, aes(x=Price)) +
+  geom_histogram(binwidth=150)+
+  geom_vline(xintercept=interval_normal[1:2])+
+  geom_vline(xintercept=t_1)
+p_normal
+
+
+```
+
+**Answer**
+
+
